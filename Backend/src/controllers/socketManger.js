@@ -80,7 +80,7 @@ export const connectToSocket = (server) =>{
 
             var key;
 
-            for([k,v] of JSON.parse(JSON.stringify(connections))){
+            for([k,v] of JSON.parse(JSON.stringify(connections))){  // k = room name, v = array of socket ids
 
                 for(let i=0;i<v.length;i++){
                     if(v[i] === socket.id){
