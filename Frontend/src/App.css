@@ -9,20 +9,25 @@
 
 .landingPageContainer nav{
     padding-inline: 1.2rem;
-    padding-block: 1.6rem;
+    padding-block: 1rem;
     display: flex;
     justify-content: space-between;
     cursor: pointer;
+    font-weight: 500;
+    border-bottom: 1px solid #2e2e2e;
+    background-color: black;
 }
 
 .landingPageContainer nav h2{
     font-size: 1.8rem;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .landingPageContainer nav .navList{
     display: flex;
+    margin-top: auto;
     gap: 2rem;
+    font-size: 1.2rem;
 }
 
 .landingMainContainer{
