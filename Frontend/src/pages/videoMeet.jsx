@@ -3,6 +3,8 @@ import React, { use } from 'react'
 import { useState, useEffect, useRef } from 'react'
 import { TextField, Button } from '@mui/material';
 import "../styles/videoComponet.css"
+import { io } from 'socket.io-client';
+import { connect } from 'http2';
 
 // For Vite projects, use import.meta.env
 const serverUrl = import.meta.env.VITE_REACT_APP_SERVER_URL;
@@ -91,8 +93,100 @@ export default function VideoMeetComponent() {
     },[]);
 
 
-    let getUserMediaSucess = ()=>{
+    let gotMessageFromServer = () =>{
 
+    }
+
+    let addMessage = () => {
+
+    }
+
+    let getUserMediaSucess = () => {
+        socketRef.current = io.connect(serverUrl, {secure: false});
+
+        socketRef.current.on("signal", gotMessageFromServer);
+
+        socketRef.current.on("connect", () => {
+            socketRef.current.emit("join-call", window.location.href);
+
+            socketIdRef.current = socketRef.current.id;
+
+            socketRef.current.on("chat-message", addMessage);
+
+            socketRef.current.on("user-left", (id) => {
+                setVideo((videos) => {
+                    let newVideos = videos.filter((video) => {
+                        return video.socketId !== id;
+                    });
+                    return newVideos;
+                })
+            });
+
+            socketRef.current.on("user-joined", (id,clients) => {
+                clients.forEach((socketListId) => {
+                    connections[socketListId] = new RTCPeerConnection(peerConfigConnection);
+                    connections[socketListId].onicecandidate = (event) => {
+                        if(event.candidate !== null){
+                            socketRef.current.emit("signal", socketListId, JSON.stringify({'ice' : event.candidate}));
+                        }
+                    }
+
+                    connections[socketListId].onaddstream = (event) =>{
+                        let videoExists = videoRef.current.find((video) => video.socketId === socketListId);
+                        if(videoExists){
+                            const updatedVideos = videos.map((video) => {
+                                video.socketId === socketListId ? { ...video, stream: event.stream} : video;
+                        });
+                            videoRef.current = updatedVideos;
+                            return updatedVideos
+                        }else{
+                            let newVideo = {
+                                socketId: socketListId,
+                                stream: event.stream,
+                                autoPlay: true,
+                                playsinline: true,
+                            }
+
+                            setVideos((videos) => {
+                                const updatedVideos =  [...videos, newVideo];
+                                videoRef.current = updatedVideos;
+                                return updatedVideos;
+                            });
+                        }
+                    };
+
+                    if(window.localStream !== undefined && window.localStream !== null){
+                        connections[socketListId].addStream(window.localStream);
+                    }else{
+                        // Todo blackslience
+                    }
+                });
+
+                if(id === socketIdRef.current){
+                    for(let id2 in connections){
+                        if(id2 === socketIdRef.current){
+                            continue;
+                        }
+
+                        try{
+                            connections[id2].addStream(window.localStream);
+                        }catch(e){
+                            connections[id2].createOffer().then((description) => {
+                                connections[id2].setLocalDescription(description)
+                                .then(() => {
+                                    socketRef.current.emit("signal", id2, JSON.stringify({'sdp' : connections[id2].localDescription}));
+                                })
+                                .catch((e) => {
+                                    console.log("Error in setting local description", e);
+                                });
+                            })
+                        }
+                    }
+                }
+                
+            });
+
+        });
     }
 
     let getUserMedia = async () => {
@@ -122,8 +216,14 @@ export default function VideoMeetComponent() {
     let getMedia = () =>{
         setVideo(videoAvailable);
         setAudio(audioAvailable);
-        connectToSocketServer();
+        // connectToSocketServer();
     }
+
+     let connect = () => {
+        setAskforUserName(false);
+        getMedia();
+    }
+
   return (
     <div>
         {askforUserName === true ? 
