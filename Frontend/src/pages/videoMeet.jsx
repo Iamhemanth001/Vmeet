@@ -3,11 +3,18 @@ import React, { useEffect, useRef, useState } from 'react'
 import io from "socket.io-client";
 import { Badge, IconButton, TextField } from '@mui/material';
 import { Button } from '@mui/material';
-
-
+import styles from '../styles/videoComponet.module.css';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import CallEndIcon from '@mui/icons-material/CallEnd';
+import ScreenShareIcon from '@mui/icons-material/ScreenShare';
+import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
+import ChatIcon from '@mui/icons-material/Chat';
 const server_url = import.meta.env.VITE_SERVER_URL;
 
-console.log(server_url);
+// console.log(server_url);
 
 var connections = {};
 
@@ -326,6 +333,13 @@ export default function VideoMeetComponent() {
         getMedia();
     }
 
+    let handleVideo = () =>{
+        setVideo(!video);
+    }
+
+    let handleAudio = () =>{
+        setAudio(!audio);
+    }
 
     return (
         <div>
@@ -345,25 +359,53 @@ export default function VideoMeetComponent() {
                     </div>
 
                 </div> : 
-                <div>
-                    <video ref={localVideoref} autoPlay muted></video>
-                    
-                    <h2>{video.socketId}</h2>
+                <div className={styles.meetVideoContainer}>
 
-                    {videos.map((video) => (
-                        <div key={video.socketId}>
-                            <video
-                                data-socket={video.socketId}
-                                ref={ref => {
-                                    if (ref && video.stream) {
-                                        ref.srcObject = video.stream;
-                                    }
-                                }}
-                                autoPlay
-                            >
-                            </video>
-                        </div>
-                    ))}
+                    <div className={styles.buttonContainer}>
+                        <IconButton onClick={handleAudio} style={{ color: audio ? 'green' : 'red' }}>
+                            {audio === true ? <MicIcon /> : <MicOffIcon />}
+                        </IconButton>
+
+                        <IconButton onClick={handleVideo} style={{ color: video ? 'green' : 'red' }}>
+                            {video === true ? <VideocamIcon /> : <VideocamOffIcon />}
+                        </IconButton>
+
+                        { screenAvailable === true ?
+                            <IconButton style={{ color: screen ? 'green' : 'red' }}>
+                                {screen === true ? <ScreenShareIcon /> : <StopScreenShareIcon />}
+                            </IconButton> 
+                            : <></>
+                        }
+
+                        <Badge badgeContent={newMessages} max={999} color='primary' onClick={() => setNewMessages(0)}>
+                            <IconButton style={{ color: 'white' }}>
+                                <ChatIcon />
+                            </IconButton>
+                        </Badge>
+
+                        <IconButton style={{ color: 'red' }}>
+                            <CallEndIcon />
+                        </IconButton>
+                    </div>
+
+                    <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted></video>
+                    
+                    <div className={styles.conferenceView}>
+                        {videos.map((video) => (
+                            <div  key={video.socketId}>
+                                <video
+                                    data-socket={video.socketId}
+                                    ref={ref => {
+                                        if (ref && video.stream) {
+                                            ref.srcObject = video.stream;
+                                        }
+                                    }}
+                                    autoPlay
+                                >
+                                </video>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             }
 
