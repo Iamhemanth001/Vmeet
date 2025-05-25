@@ -82,13 +82,13 @@
 
 .chatRoom{
     height: 90vh;
-    width: 20vw;
+    width: 22vw;
     position: absolute;
     right: 0;
     background: #ededed;
     background-image: linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%);
     border-radius: 10px 0 0 10px;
-    padding-inline: 20px;
+    padding-inline: 15px;
 }
 
 .chatContainer {
@@ -99,6 +99,35 @@
 .chatInputContainer{
     position: absolute;
     bottom: 0;
+}
+
+.chatInputContainer Button {
+    background-color: #414345;
+    margin-top: 9px;
+    margin-left: 5px;
+}
+
+.chattingDisplay{
+    height: calc(90% - 50px);
+    overflow-y: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chatSent{
+    border-radius: 7px;
+    background-color: #ffd4d4;
+}
+
+.chatSent p{
+    text-align: right;
+    font-size: 1.3rem;
+    color: #414345;
+    padding-inline: 8px;
 }
 
 /* Custom Scrollbar for .conferenceView */
@@ -125,4 +154,48 @@
 .conferenceView {
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+
+.chattingDisplay::-webkit-scrollbar {
+    width: 0px; 
+}
+
+.chattingDisplay::-webkit-scrollbar-track {
+    background: rgba(100, 100, 100, 0.9);
+    border-radius: 12px;
+    margin: 4px 0;
+}
+
+.chattingDisplay::-webkit-scrollbar-thumb {
+    background: rgba(51, 51, 51, 0.6);
+    border-radius: 12px;
+    border: 3px solid #d3d3d3;
+    box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.3);
+    transition: background-color 0.3s ease;
+}
+
+.chattingDisplay::-webkit-scrollbar-thumb:hover {
+    background: rgba(48, 48, 48, 0.9);
+}
+
+.chattingDisplay::-webkit-scrollbar-button {
+  -webkit-appearance: none !important;
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+
+.chattingDisplay::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox */
+.chattingDisplay {
+    scrollbar-width: thin;
+    scrollbar-color: #414345 #1b0c0c;
 }

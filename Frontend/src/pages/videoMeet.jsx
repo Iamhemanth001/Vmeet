@@ -12,6 +12,7 @@ import CallEndIcon from '@mui/icons-material/CallEnd';
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
 import ChatIcon from '@mui/icons-material/Chat';
+import { useNavigate } from 'react-router-dom';
 const server_url = import.meta.env.VITE_SERVER_URL;
 
 // console.log(server_url);
@@ -49,7 +50,7 @@ export default function VideoMeetComponent() {
 
     let [message, setMessage] = useState("");
 
-    let [newMessages, setNewMessages] = useState(3);
+    let [newMessages, setNewMessages] = useState(0);
 
     let [askForUsername, setAskForUsername] = useState(true);
 
@@ -64,6 +65,8 @@ export default function VideoMeetComponent() {
 
 
     // }
+
+    let routeTo = useNavigate();
 
     useEffect(() => {
         console.log("HELLO")
@@ -127,7 +130,7 @@ export default function VideoMeetComponent() {
     }
 
 
-    let getUserMediaSuccess = (stream) => {
+        let getUserMediaSuccess = (stream) => {
         try {
             window.localStream.getTracks().forEach(track => track.stop())
         } catch (e) { console.log(e) }
@@ -215,6 +218,16 @@ export default function VideoMeetComponent() {
         }
     }
 
+    const addMessage = (data, sender, socketIdSender) => {
+       
+        setMessages((prevMessages) => [
+            ...prevMessages,
+            { sender: sender, data: data, socketIdSender: socketIdSender }
+        ]);
+        if (socketIdSender !== socketIdRef.current) {
+            setNewMessages((prevNewMessages) => prevNewMessages + 1);
+        }
+    };
 
     let connectToSocketServer = () => {
         socketRef.current = io.connect(server_url, { secure: false })
@@ -225,7 +238,7 @@ export default function VideoMeetComponent() {
             socketRef.current.emit('join-call', { room: window.location.href, username });
             socketIdRef.current = socketRef.current.id
 
-            // socketRef.current.on('chat-message', addMessage)
+            socketRef.current.on('chat-message', addMessage)
 
             socketRef.current.on('user-left', (id) => {
                 setVideos((videos) => videos.filter((video) => video.socketId !== id))
@@ -320,11 +333,12 @@ export default function VideoMeetComponent() {
     }
 
     let black = ({ width = 640, height = 480 } = {}) => {
-        let canvas = Object.assign(document.createElement("canvas"), { width, height })
-        canvas.getContext('2d').fillRect(0, 0, width, height)
-        let stream = canvas.captureStream()
-        return Object.assign(stream.getVideoTracks()[0], { enabled: false })
-    }
+    let canvas = Object.assign(document.createElement("canvas"), { width, height });
+    canvas.getContext('2d').fillRect(0, 0, width, height);
+    let stream = canvas.captureStream();
+    let track = stream.getVideoTracks()[0];
+    return Object.assign(track, { enabled: false });
+    };
 
 
     
@@ -403,7 +417,22 @@ export default function VideoMeetComponent() {
     }
     
     let sendMessage = () => {
-    
+        console.log(socketRef.current);
+        socketRef.current.emit('chat-message', message, username)
+        setMessage("");
+
+        // this.setState({ message: "", sender: username })
+    }
+
+    let handleEndCall = () => {
+        try{
+            let tracks = localVideoref.current.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+        }catch(e) {
+            console.log("Error in stopping the stream", e);
+        }
+
+        routeTo("/home");
     }
     return (
         <div>
@@ -428,10 +457,47 @@ export default function VideoMeetComponent() {
                     {showModal === true ? 
                         <div className={styles.chatRoom}>
                             <div className={styles.chatContainer}>
-                                <h1>Chat</h1>
+                                <h1 style={{textAlign: "center"}}>Chat Box</h1>
+
+                                 <div className={styles.chattingDisplay}>
+
+                                {messages.length !== 0 ? messages.map((msg, index) => {
+
+                                    console.log(messages)
+                                    return (
+                                        <div className={styles.chatSent} style={{ marginBottom: "20px" }} key={index}>
+                                            <p style={{ fontWeight: "bold", fontSize: "13px"}}><span style={{fontSize : "15px"}}>~</span>{msg.data.username}</p>
+                                            <p style={{textAlign: "left"}}>{msg.data.message}</p>
+                                        </div>
+                                    )
+                                }) : <p>No Messages Yet</p>}
+
+
+                            </div>
+
 
                                 <div className={styles.chatInputContainer}>
-                                    <TextField id="outlined-basic" label="Enter your Message" variant="outlined" />
+                                    <TextField value={message} onChange={e => setMessage(e.target.value)} id="outlined-basic" label="Enter your Message" variant="outlined"  sx={{
+                                        input: {
+                                            color: 'black', // Text color
+                                            },
+                                            label: {
+                                            color: 'black', // Default label color
+                                            },
+                                            '& label.Mui-focused': {
+                                            color: '#414345', // Label color when focused
+                                        },'& .MuiOutlinedInput-root': {
+                                        '& fieldset': {
+                                            borderColor: '#ccc', // Default color
+                                        },
+                                        '&:hover fieldset': {
+                                            borderColor: '#414345', // Hover color
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                            borderColor: '#414345', // Focused color
+                                        },
+                                        },
+                                    }} />
                                     <Button variant='contained' onClick={sendMessage}>Send</Button>
                                 </div>
                             </div>
@@ -462,7 +528,7 @@ export default function VideoMeetComponent() {
                             </IconButton>
                         </Badge>
 
-                        <IconButton style={{ color: 'red' }}>
+                        <IconButton onClick={handleEndCall} style={{ color: 'red' }}>
                             <CallEndIcon />
                         </IconButton>
                     </div>
