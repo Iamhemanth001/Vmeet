@@ -219,7 +219,7 @@ export default function VideoMeetComponent() {
     }
 
     const addMessage = (data, sender, socketIdSender) => {
-       
+        // console.log("ADD MESSAGE", data, sender, socketIdSender);
         setMessages((prevMessages) => [
             ...prevMessages,
             { sender: sender, data: data, socketIdSender: socketIdSender }
@@ -466,8 +466,8 @@ export default function VideoMeetComponent() {
                                     console.log(messages)
                                     return (
                                         <div className={styles.chatSent} style={{ marginBottom: "20px" }} key={index}>
-                                            <p style={{ fontWeight: "bold", fontSize: "13px"}}><span style={{fontSize : "15px"}}>~</span>{msg.data.username}</p>
-                                            <p style={{textAlign: "left"}}>{msg.data.message}</p>
+                                            <p style={{ fontWeight: "bold", fontSize: "13px"}}><span style={{fontSize : "15px"}}>~</span>{msg.sender}</p>
+                                            <p style={{textAlign: "left"}}>{msg.data}</p>
                                         </div>
                                     )
                                 }) : <p>No Messages Yet</p>}

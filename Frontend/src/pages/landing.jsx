@@ -24,7 +24,7 @@ export default function landing() {
             </div>
 
             <div>
-                <h1 style={{color: "#FF9839", fontSize: "5rem",textAlign: "right"}}>Vmeet &nbsp;</h1>
+                <h2>Vmeet &nbsp;</h2>
                 <p> Where Faces Meet,<br />
                 No Matter the Place!</p>
 

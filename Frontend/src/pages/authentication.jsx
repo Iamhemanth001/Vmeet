@@ -43,7 +43,7 @@ export default function Authentication() {
             }
             if (formState === 1) {
                 let result = await handleRegister(name, username, password);
-                console.log(result);
+                // console.log(result);
                 setUsername("");
                 setMessage(result);
                 setOpen(true);
