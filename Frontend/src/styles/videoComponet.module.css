@@ -2,9 +2,25 @@
     position: relative;
     height: 100vh;
     overflow: hidden;
-    background: linear-gradient(1deg, rgba(2, 0, 36, 1) 0%, rgba(0, 0, 79, 1) 28%, rgba(0, 212, 255, 1) 100%);
+    
+    background: linear-gradient(-45deg, #414345, #232526, #414345, #232526);
+    background-size: 400% 400%;
+    animation: animatedGradient 15s ease infinite;
+
     display: flex;
     flex-direction: column;
+}
+
+@keyframes animatedGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 .conferenceView {
@@ -29,12 +45,13 @@
     border-radius: 20px;
     object-fit: cover;
     background-color: black;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
 }
 
 .meetUserVideo {
     position: fixed;
     bottom: 80px;
-    right: 10px;
+    left: 10px;
     height: 30vh;
     aspect-ratio: 12/9; 
     border-radius: 20px;
@@ -44,6 +61,7 @@
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
 }
 
 
@@ -58,10 +76,30 @@
 }
 
 .buttonContainer svg {
-    font-size: 3rem;
+    font-size: 2.4rem;
     margin: 0 10px;
 }
 
+.chatRoom{
+    height: 90vh;
+    width: 20vw;
+    position: absolute;
+    right: 0;
+    background: #ededed;
+    background-image: linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%);
+    border-radius: 10px 0 0 10px;
+    padding-inline: 20px;
+}
+
+.chatContainer {
+    position: relative;
+    height: 100%;
+}
+
+.chatInputContainer{
+    position: absolute;
+    bottom: 0;
+}
 
 /* Custom Scrollbar for .conferenceView */
 .conferenceView::-webkit-scrollbar {

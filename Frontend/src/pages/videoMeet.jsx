@@ -341,6 +341,70 @@ export default function VideoMeetComponent() {
         setAudio(!audio);
     }
 
+     let getDislayMediaSuccess = (stream) => {
+        console.log("HERE")
+        try {
+            window.localStream.getTracks().forEach(track => track.stop())
+        } catch (e) { console.log(e) }
+
+        window.localStream = stream
+        localVideoref.current.srcObject = stream
+
+        for (let id in connections) {
+            if (id === socketIdRef.current) continue
+
+            connections[id].addStream(window.localStream)
+
+            connections[id].createOffer().then((description) => {
+                connections[id].setLocalDescription(description)
+                    .then(() => {
+                        socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
+                    })
+                    .catch(e => console.log(e))
+            })
+        }
+
+        stream.getTracks().forEach(track => track.onended = () => {
+            setScreen(false)
+
+            try {
+                let tracks = localVideoref.current.srcObject.getTracks()
+                tracks.forEach(track => track.stop())
+            } catch (e) { console.log(e) }
+
+            let blackSilence = (...args) => new MediaStream([black(...args), silence()])
+            window.localStream = blackSilence()
+            localVideoref.current.srcObject = window.localStream
+
+            getUserMedia()
+
+        })
+    }
+
+    let getDisplayMedia = () => {
+        if(screen) {
+            if(navigator.mediaDevices.getDisplayMedia) {
+                navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                    .then(getDislayMediaSuccess)
+                    .then((stream) => { })
+                    .catch((e) => console.log(e))
+            }
+        }
+    }
+    
+     useEffect(() => {
+        if (screen !== undefined) {
+            getDisplayMedia();
+        }
+    }, [screen])
+
+    let handleScreen = () => {
+        setScreen(!screen);
+    }
+    
+    let sendMessage = () => {
+    
+    }
     return (
         <div>
 
@@ -361,6 +425,19 @@ export default function VideoMeetComponent() {
                 </div> : 
                 <div className={styles.meetVideoContainer}>
 
+                    {showModal === true ? 
+                        <div className={styles.chatRoom}>
+                            <div className={styles.chatContainer}>
+                                <h1>Chat</h1>
+
+                                <div className={styles.chatInputContainer}>
+                                    <TextField id="outlined-basic" label="Enter your Message" variant="outlined" />
+                                    <Button variant='contained' onClick={sendMessage}>Send</Button>
+                                </div>
+                            </div>
+                        </div>
+                    : <></>}
+
                     <div className={styles.buttonContainer}>
                         <IconButton onClick={handleAudio} style={{ color: audio ? 'green' : 'red' }}>
                             {audio === true ? <MicIcon /> : <MicOffIcon />}
@@ -371,14 +448,16 @@ export default function VideoMeetComponent() {
                         </IconButton>
 
                         { screenAvailable === true ?
-                            <IconButton style={{ color: screen ? 'green' : 'red' }}>
+                            <IconButton onClick={handleScreen} style={{ color: screen ? 'green' : 'red' }}>
                                 {screen === true ? <ScreenShareIcon /> : <StopScreenShareIcon />}
                             </IconButton> 
                             : <></>
                         }
 
                         <Badge badgeContent={newMessages} max={999} color='primary' onClick={() => setNewMessages(0)}>
-                            <IconButton style={{ color: 'white' }}>
+                            <IconButton onClick={() => {
+                                setModal(!showModal);
+                            }} style={{ color: 'white' }}>
                                 <ChatIcon />
                             </IconButton>
                         </Badge>
