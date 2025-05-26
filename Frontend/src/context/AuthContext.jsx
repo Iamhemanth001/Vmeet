@@ -43,7 +43,6 @@ export const AuthProvider = ({ children }) => {
     }
 
     const handleLogin = async (username, password) => {
-        // eslint-disable-next-line no-useless-catch
         try {
             let request = await client.post("/login", {
                 username: username,
