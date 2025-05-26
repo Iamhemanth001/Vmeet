@@ -15,7 +15,6 @@ import ChatIcon from '@mui/icons-material/Chat';
 import { useNavigate } from 'react-router-dom';
 const server_url = import.meta.env.VITE_SERVER_URL;
 
-// console.log(server_url);
 
 var connections = {};
 
