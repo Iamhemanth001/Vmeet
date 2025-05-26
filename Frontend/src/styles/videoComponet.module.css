@@ -109,7 +109,7 @@
 
 .chattingDisplay{
     height: calc(90% - 50px);
-    overflow-y: scroll;
+    overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
     padding: 10px;
@@ -119,15 +119,19 @@
 }
 
 .chatSent{
-    border-radius: 7px;
+    border-radius: 5px;
     background-color: #ffd4d4;
+    height: max-content;
+    max-width: 100%;
+    word-wrap: break-word;
+    padding: 8px;
 }
 
 .chatSent p{
     text-align: right;
     font-size: 1.3rem;
     color: #414345;
-    padding-inline: 8px;
+    padding-inline: 10px;
 }
 
 /* Custom Scrollbar for .conferenceView */

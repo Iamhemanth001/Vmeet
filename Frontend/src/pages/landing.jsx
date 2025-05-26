@@ -1,7 +1,19 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+
+function generateRandomString(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 export default function landing() {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const router = useNavigate();
+  
   return (
     <div className='landingPageContainer'>
         <nav>
@@ -10,9 +22,19 @@ export default function landing() {
             </div>
 
             <div className='navList'>
-                <p>Join as Guest</p>
-                <p>Register</p>
-                <div role='button'>
+                <p  onClick={() => {
+                    const randomString = generateRandomString(5);
+                    router(`/${randomString}`);
+                }}>Join as Guest</p>
+
+                <p onClick={() =>{
+                    router('/auth');
+                }} >Register</p>
+
+                <div role='button'
+                    onClick={() => {
+                        router('/auth');
+                    }}>
                     <p>Login</p>
                 </div>
             </div>

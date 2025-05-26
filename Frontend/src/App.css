@@ -27,7 +27,7 @@
 
 .landingPageContainer nav .navList{
     display: flex;
-    margin-top: auto;
+    align-items: center;
     gap: 2rem;
     font-size: 1.2rem;
 }
@@ -102,7 +102,7 @@
 
 .homePageContainer nav{
     padding-inline: 1.2rem;
-    padding-block: 1rem;
+    padding-block: 0.8rem;
     display: flex;
     justify-content: space-between;
     cursor: pointer;
@@ -125,7 +125,7 @@
 
 .homePageContainer nav .navList{
     display: flex;
-    margin-top: auto;
+    /* margin-top: auto; */
     color: white;
     gap: 2rem;
     font-size: 1.2rem;
@@ -191,3 +191,18 @@
     /* border: 2px solid white; */
 }
 
+.cardContainer{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.historyCard{
+    margin-top: 10px;
+    width: 20rem;
+    text-align: center;
+}
+
+.historyCard p{
+    margin-top: 5px;
+}

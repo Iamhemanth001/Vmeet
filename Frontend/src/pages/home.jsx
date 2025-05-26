@@ -30,7 +30,14 @@ function HomeComponent() {
      <div className="homePageContainer">
             <nav>
                 <div className='navHeader'>
-                    <h2>Vmeet</h2>
+                    <IconButton onClick={
+                        () => {
+                            navigate("/home")
+                        }
+                    }>
+
+                        <h2>Vmeet</h2>
+                    </IconButton>
                 </div>
 
                 <div className='navList'>
@@ -45,7 +52,7 @@ function HomeComponent() {
 
                     <Button style={{fontSize: "1.2rem"}} onClick={() => {
                         localStorage.removeItem("token")
-                        navigate("/auth")
+                        navigate("/")
                     }}>
                         logout
                     </Button>
