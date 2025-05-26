@@ -426,6 +426,8 @@ export default function VideoMeetComponent() {
     let handleEndCall = () => {
         try{
             let tracks = localVideoref.current.srcObject.getTracks();
+            messages = [];
+            setMessages([]);
             tracks.forEach(track => track.stop());
         }catch(e) {
             console.log("Error in stopping the stream", e);
