@@ -27,10 +27,10 @@ var connections = {};
 const peerConfigConnections = {
     iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
-        // Example public TURN server (for testing only, not production):
         { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
     ]
 };
+
 
 
 export default function VideoMeetComponent() {
@@ -48,7 +48,7 @@ export default function VideoMeetComponent() {
 
     let [audio, setAudio] = useState(false);
 
-    let [screen, setScreen] = useState();
+    let [screen, setScreen] = useState(false);
 
     let [showModal, setModal] = useState(true);
 
@@ -416,15 +416,98 @@ let getUserMediaSuccess = (stream) => {
 
 
 
-    let handleVideo = () =>{
-        setVideo(!video);
-        getUserMedia();
+let handleVideo = async () => {
+    const newVideoState = !video;
+    let videoTrack = window.localStream ? window.localStream.getVideoTracks()[0] : null;
+
+    // If turning ON and no video track, request one
+    if (newVideoState && !videoTrack) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoTrack = stream.getVideoTracks()[0];
+
+            // If no local stream, create one
+            if (!window.localStream) {
+                window.localStream = new MediaStream();
+            }
+            window.localStream.addTrack(videoTrack);
+
+            // Update your local video element if needed
+            if (localVideoref.current) {
+                localVideoref.current.srcObject = window.localStream;
+            }
+        } catch (e) {
+            console.log("Error getting video track:", e);
+            return;
+        }
     }
 
-    let handleAudio = () =>{
-        setAudio(!audio);
-        getUserMedia();
+    // Enable/disable the track
+    if (videoTrack) videoTrack.enabled = newVideoState;
+
+    // Update all peer connections
+    Object.values(connections).forEach(pc => {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) {
+            sender.replaceTrack(newVideoState ? videoTrack : null);
+        }
+    });
+
+    setVideo(newVideoState);
+};
+
+
+
+
+
+
+
+
+  let handleAudio = async () => {
+    const newAudioState = !audio;
+
+    let audioTrack = window.localStream ? window.localStream.getAudioTracks()[0] : null;
+
+    // If turning ON and no audio track, request one
+    if (newAudioState && !audioTrack) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioTrack = stream.getAudioTracks()[0];
+
+            // If no local stream, create one
+            if (!window.localStream) {
+                window.localStream = new MediaStream();
+            }
+            window.localStream.addTrack(audioTrack);
+
+            // Update your local video element if needed
+            if (localVideoref.current) {
+                localVideoref.current.srcObject = window.localStream;
+            }
+        } catch (e) {
+            console.log("Error getting audio track:", e);
+            return;
+        }
     }
+
+    // Enable/disable the track
+    if (audioTrack) audioTrack.enabled = newAudioState;
+
+    // Update all peer connections
+    Object.values(connections).forEach(pc => {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (sender) {
+            sender.replaceTrack(newAudioState ? audioTrack : null);
+        }
+    });
+
+    setAudio(newAudioState);
+};
+
+
+
+
+
 
 let getDislayMediaSuccess = (stream) => {
     console.log("[ScreenShare] Stream received");
@@ -656,12 +739,20 @@ useEffect(() => {
                     : <></>}
 
                     <div className={styles.buttonContainer}>
-                        <IconButton onClick={handleAudio} style={{ color: audio ? 'green' : 'red' }}>
-                            {audio === true ? <MicIcon /> : <MicOffIcon />}
+                        <IconButton 
+                                onClick={handleAudio} 
+                                style={{ color: audio ? 'green' : 'red' }} 
+                                aria-label={audio ? "Mute microphone" : "Unmute microphone"}
+                            >
+                                {audio ? <MicIcon /> : <MicOffIcon />}
                         </IconButton>
 
-                        <IconButton onClick={handleVideo} style={{ color: video ? 'green' : 'red' }}>
-                            {video === true ? <VideocamIcon /> : <VideocamOffIcon />}
+                            <IconButton 
+                                onClick={handleVideo} 
+                                style={{ color: video ? 'green' : 'red' }} 
+                                aria-label={video ? "Turn off camera" : "Turn on camera"}
+                            >
+                                {video ? <VideocamIcon /> : <VideocamOffIcon />}
                         </IconButton>
 
                         { screenAvailable === true ?
