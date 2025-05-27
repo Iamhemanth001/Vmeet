@@ -13,7 +13,7 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import Snackbar from '@mui/material/Snackbar';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import "../app.css"
+import "../App.css"
 import { useNavigate } from 'react-router-dom';
 
 
