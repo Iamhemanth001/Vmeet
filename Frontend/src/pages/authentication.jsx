@@ -13,7 +13,8 @@ import { AuthContext } from '../context/AuthContext.jsx';
 import Snackbar from '@mui/material/Snackbar';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-
+import "../app.css"
+import { useNavigate } from 'react-router-dom';
 
 
 // TODO remove, this demo shouldn't need to reset the theme.
@@ -64,121 +65,160 @@ export default function Authentication() {
         setOpen(false);
     };
 
+    function generateRandomString(length) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    const router = useNavigate();
     return (
-        <ThemeProvider theme={defaultTheme}>
-            <Grid container component="main" sx={{ height: '100vh' }}>
-                <CssBaseline />
-                
-                {/* Left-side Image Panel */}
-                <Grid
-                    item
-                    xs={false}
-                    sm={4}
-                    md={7}
-                    sx={{
-                        height: '100vh',
-                        width: '60%',
-                        backgroundImage: 'url(/login.png)',
-                        // backgroundImage: 'url(https://images.unsplash.com/vector-1739369767407-e24e72cf4891?q=80&w=1800&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
-                />
-                
-                <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square sx={{ width: '40%',backgroundColor: '#f0efeb' }}>
-                    
-                    <Box
-                        sx={{
-                            my: 8,
-                            mx: 4,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                       }}
-                    >
-                        <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
-                            <LockOutlinedIcon />
-                        </Avatar>
+        <div className='authenticationPageContainer'>
+        
+                <nav className='nav'>
+                    <div className='navHeader'>
+                        <h2 onClick={() => {
+                            router('/');
+                        }} >Vmeet</h2>
+                    </div>
 
+                    <div className='navList'>
+                        <p  onClick={() => {
+                            const randomString = generateRandomString(5);
+                            router(`/${randomString}`);
+                        }}>Join as Guest</p>
 
-                        <div>
-                            <Button variant={formState === 0 ? "contained" : ""} onClick={() => { setFormState(0) }}>
-                                Sign In
-                            </Button>
-                            <Button variant={formState === 1 ? "contained" : ""} onClick={() => { setFormState(1) }}>
-                                Sign Up
-                            </Button>
+                        <p onClick={() =>{
+                            router('/auth');
+                        }} >Register</p>
+
+                        <div role='button'
+                            onClick={() => {
+                                router('/auth');
+                            }}>
+                            <p>Login</p>
                         </div>
+                    </div>
+                </nav>
 
-                        <Box component="form" noValidate sx={{ mt: 1 }}>
-                            {formState === 1 ? <TextField
-                                margin="normal"
-                                required
-                                fullWidth
-                                id="username"
-                                label="Full Name"
-                                name="username"
-                                value={name}
-                                autoFocus
-                                onChange={(e) => setName(e.target.value)}
-                            /> : <></>}
+            <ThemeProvider theme={defaultTheme}>
+                <Grid container component="main" sx={{ height: '90.1vh' }}>
+                    <CssBaseline />
+                    
+                    {/* Left-side Image Panel */}
+                    <Grid
+                        item
+                        xs={false}
+                        sm={4}
+                        md={7}
+                        sx={{
+                            height: '90.1vh',
+                            width: '60%',
+                            backgroundImage: 'url(/login.png)',
+                            // backgroundImage: 'url(https://images.unsplash.com/vector-1739369767407-e24e72cf4891?q=80&w=1800&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                        }}
+                    />
+                    
+                    <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square sx={{ width: '40%',backgroundColor: '#f0efeb' }}>
+                        
+                        <Box
+                            sx={{
+                                my: 8,
+                                mx: 4,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                        }}
+                        >
+                            <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
+                                <LockOutlinedIcon />
+                            </Avatar>
 
-                            <TextField
-                                margin="normal"
-                                required
-                                fullWidth
-                                id="username"
-                                label="Username"
-                                name="username"
-                                value={username}
-                                autoFocus
-                                onChange={(e) => setUsername(e.target.value)}
 
-                            />
-                            <TextField
-                                margin="normal"
-                                required
-                                fullWidth
-                                name="password"
-                                label="Password"
-                                value={password}
-                                type="password"
-                                onChange={(e) => setPassword(e.target.value)}
+                            <div>
+                                <Button variant={formState === 0 ? "contained" : ""} onClick={() => { setFormState(0) }}>
+                                    Sign In
+                                </Button>
+                                <Button variant={formState === 1 ? "contained" : ""} onClick={() => { setFormState(1) }}>
+                                    Sign Up
+                                </Button>
+                            </div>
 
-                                id="password"
-                            />
+                            <Box component="form" noValidate sx={{ mt: 1 }}>
+                                {formState === 1 ? <TextField
+                                    margin="normal"
+                                    required
+                                    fullWidth
+                                    id="username"
+                                    label="Full Name"
+                                    name="username"
+                                    value={name}
+                                    autoFocus
+                                    onChange={(e) => setName(e.target.value)}
+                                /> : <></>}
 
-                            <p style={{ color: "red" }}>{error}</p>
+                                <TextField
+                                    margin="normal"
+                                    required
+                                    fullWidth
+                                    id="username"
+                                    label="Username"
+                                    name="username"
+                                    value={username}
+                                    autoFocus
+                                    onChange={(e) => setUsername(e.target.value)}
 
-                            <Button
-                                type="button"
-                                fullWidth
-                                variant="contained"
-                                sx={{ mt: 3, mb: 2 }}
-                                onClick={handleAuth}
-                            >
-                                {formState === 0 ? "Login " : "Register"}
-                            </Button>
+                                />
+                                <TextField
+                                    margin="normal"
+                                    required
+                                    fullWidth
+                                    name="password"
+                                    label="Password"
+                                    value={password}
+                                    type="password"
+                                    onChange={(e) => setPassword(e.target.value)}
 
+                                    id="password"
+                                />
+
+                                <p style={{ color: "red" }}>{error}</p>
+
+                                <Button
+                                    type="button"
+                                    fullWidth
+                                    variant="contained"
+                                    sx={{ mt: 3, mb: 2 }}
+                                    onClick={handleAuth}
+                                >
+                                    {formState === 0 ? "Login " : "Register"}
+                                </Button>
+
+                            </Box>
                         </Box>
-                    </Box>
+                    </Grid>
                 </Grid>
-            </Grid>
 
-           {/* Snackbar for Success Message */}
-            <Snackbar
-                open={open}
-                autoHideDuration={4000}
-                onClose={handleCloseSnackbar}
-                message={message}
-                action={
-                    <IconButton size="small" aria-label="close" color="inherit" onClick={handleCloseSnackbar}>
-                        <CloseIcon />
-                    </IconButton>
-                }
-            />
+            {/* Snackbar for Success Message */}
+                <Snackbar
+                    open={open}
+                    autoHideDuration={4000}
+                    onClose={handleCloseSnackbar}
+                    message={message}
+                    action={
+                        <IconButton size="small" aria-label="close" color="inherit" onClick={handleCloseSnackbar}>
+                            <CloseIcon />
+                        </IconButton>
+                    }
+                />
 
-        </ThemeProvider>
+            </ThemeProvider>
+        </div>
     );
 }

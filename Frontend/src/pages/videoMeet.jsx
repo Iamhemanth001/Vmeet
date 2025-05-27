@@ -218,7 +218,7 @@ export default function VideoMeetComponent() {
     }
 
     const addMessage = (data, sender, socketIdSender) => {
-        // console.log("ADD MESSAGE", data, sender, socketIdSender);
+        console.log("ADD MESSAGE", data, sender, socketIdSender);
         setMessages((prevMessages) => [
             ...prevMessages,
             { sender: sender, data: data, socketIdSender: socketIdSender }
@@ -236,8 +236,14 @@ export default function VideoMeetComponent() {
         socketRef.current.on('connect', () => {
             socketRef.current.emit('join-call', { room: window.location.href, username });
             socketIdRef.current = socketRef.current.id
-
-            socketRef.current.on('chat-message', addMessage)
+            setMessages([]);
+            socketRef.current.off('chat-message')
+            socketRef.current.on('chat-message', (msg) => {
+                console.log("CHAT MESSAGE RECEIVED", msg);
+                if (msg && msg.room && msg.room.room === window.location.href) {
+                    addMessage(msg.data, msg.sender, msg["socket-id-sender"]);
+                }
+            });
 
             socketRef.current.on('user-left', (id) => {
                 setVideos((videos) => videos.filter((video) => video.socketId !== id))
@@ -332,11 +338,10 @@ export default function VideoMeetComponent() {
     }
 
     let black = ({ width = 640, height = 480 } = {}) => {
-    let canvas = Object.assign(document.createElement("canvas"), { width, height });
-    canvas.getContext('2d').fillRect(0, 0, width, height);
-    let stream = canvas.captureStream();
-    let track = stream.getVideoTracks()[0];
-    return Object.assign(track, { enabled: false });
+        let canvas = Object.assign(document.createElement("canvas"), { width, height });
+        canvas.getContext('2d').fillRect(0, 0, width, height);
+        let stream = canvas.captureStream();
+        return Object.assign(stream.getVideoTracks()[0], { enabled: false });
     };
 
 
@@ -424,17 +429,40 @@ export default function VideoMeetComponent() {
     }
 
     let handleEndCall = () => {
-        try{
-            let tracks = localVideoref.current.srcObject.getTracks();
-            messages = [];
+        try {
             setMessages([]);
-            tracks.forEach(track => track.stop());
-        }catch(e) {
+            setVideos([]);
+            videoRef.current = [];
+            connections = {};
+
+            if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+            }
+
+            setVideoAvailable(false);
+            setAudioAvailable(false);
+            setVideo(false);
+            setAudio(false);
+            setScreen(false);
+            setScreenAvailable(false);
+            setAskForUsername(true);
+            setUsername("");
+            setModal(false);
+            setNewMessages(0);
+
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => track.stop());
+                window.localStream = null; // Optional: clear it
+            }
+        } catch (e) {
             console.log("Error in stopping the stream", e);
         }
 
         routeTo("/home");
     }
+
+    
     return (
         <div>
 
@@ -479,27 +507,35 @@ export default function VideoMeetComponent() {
 
 
                                 <div className={styles.chatInputContainer}>
-                                    <TextField value={message} onChange={e => setMessage(e.target.value)} id="outlined-basic" label="Enter your Message" variant="outlined"  sx={{
-                                        input: {
-                                            color: 'black', // Text color
+                                    <TextField
+                                        value={message}
+                                        onChange={e => setMessage(e.target.value)}
+                                        id="outlined-basic"
+                                        label="Enter your Message"
+                                        variant="outlined"
+                                        sx={{
+                                            '& .MuiInputBase-input': {
+                                            color: 'black', // Text color inside input
                                             },
-                                            label: {
-                                            color: 'black', // Default label color
+                                            '& .MuiInputLabel-root': {
+                                            color: 'black', // Label color by default
                                             },
-                                            '& label.Mui-focused': {
+                                            '& .MuiInputLabel-root.Mui-focused': {
                                             color: '#414345', // Label color when focused
-                                        },'& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: '#ccc', // Default color
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#414345', // Hover color
-                                        },
-                                        '&.Mui-focused fieldset': {
-                                            borderColor: '#414345', // Focused color
-                                        },
-                                        },
-                                    }} />
+                                            },
+                                            '& .MuiOutlinedInput-root': {
+                                            '& fieldset': {
+                                                borderColor: '#ccc', // Default border color
+                                            },
+                                            '&:hover fieldset': {
+                                                borderColor: '#414345', // Hover border color
+                                            },
+                                            '&.Mui-focused fieldset': {
+                                                borderColor: '#414345', // Focused border color
+                                            },
+                                            },
+                                        }}
+                                    />
                                     <Button variant='contained' onClick={sendMessage}>Send</Button>
                                 </div>
                             </div>

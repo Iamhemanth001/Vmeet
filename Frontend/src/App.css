@@ -7,7 +7,7 @@
     color: white;
 }
 
-.landingPageContainer nav{
+.nav{
     padding-inline: 1.2rem;
     padding-block: 1rem;
     display: flex;
@@ -19,17 +19,20 @@
 }
 
 
-.landingPageContainer nav h2{
+.nav h2{
     font-size: 1.8rem;
     font-weight: 600;
     color: #FF9839;
+    cursor: pointer;
 }
 
-.landingPageContainer nav .navList{
+.nav .navList{
     display: flex;
     align-items: center;
     gap: 2rem;
     font-size: 1.2rem;
+    cursor: pointer;
+    color: white;
 }
 
 .landingMainContainer{
@@ -98,6 +101,7 @@
     background-repeat: no-repeat;
     background-size: cover;
     color: white;
+    overflow: auto;
 } 
 
 .homePageContainer nav{

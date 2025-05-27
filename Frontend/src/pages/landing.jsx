@@ -16,9 +16,11 @@ export default function landing() {
   
   return (
     <div className='landingPageContainer'>
-        <nav>
+        <nav className='nav'>
             <div className='navHeader'>
-                <h2>Vmeet</h2>
+                <h2 onClick={() => {
+                    router('/');
+                }} >Vmeet</h2>
             </div>
 
             <div className='navList'>
