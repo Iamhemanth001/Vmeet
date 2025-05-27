@@ -18,11 +18,20 @@ const server_url = import.meta.env.VITE_SERVER_URL;
 
 var connections = {};
 
+// const peerConfigConnections = {
+//     "iceServers": [
+//         { "urls": "stun:stun.l.google.com:19302" }
+//     ]
+// }
+
 const peerConfigConnections = {
-    "iceServers": [
-        { "urls": "stun:stun.l.google.com:19302" }
+    iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        // Example public TURN server (for testing only, not production):
+        { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }
     ]
-}
+};
+
 
 export default function VideoMeetComponent() {
 
@@ -205,6 +214,10 @@ let getUserMediaSuccess = (stream) => {
     // 1. Connection creation
     if (!connections[fromId]) {
         connections[fromId] = new RTCPeerConnection(peerConfigConnections);
+        connections[fromId].oniceconnectionstatechange = () => {
+            console.log(`[RTC][${fromId}] ICE state:`, connections[fromId].iceConnectionState);
+        };
+
         console.log(`[RTC][${fromId}] Created new RTCPeerConnection`);
 
         // 2. Add local tracks
@@ -295,6 +308,9 @@ let getUserMediaSuccess = (stream) => {
             if (connections[socketListId]) return; // Prevent duplicate connections
 
             connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
+            connections[socketListId].oniceconnectionstatechange = () => {
+                console.log(`[RTC][${socketListId}] ICE state:`, connections[socketListId].iceConnectionState);
+            };
 
             // ICE candidate
             connections[socketListId].onicecandidate = function (event) {
@@ -358,7 +374,12 @@ let getUserMediaSuccess = (stream) => {
     // User left handler
     socketRef.current.on('user-left', (id) => {
         setVideos((videos) => videos.filter((video) => video.socketId !== id));
+        if (connections[id]) {
+            connections[id].close();
+            delete connections[id];
+        }
     });
+
 
     // Cleanup on unmount
     return () => {
@@ -670,7 +691,6 @@ useEffect(() => {
                         {videos.map((video) => (
                             <video
                                 key={video.socketId}
-                                style={{ border: '1px solid black', width: "300px", margin: "10px" }}
                                 ref={el => {
                                     if (el) el.srcObject = video.stream;
                                 }}
