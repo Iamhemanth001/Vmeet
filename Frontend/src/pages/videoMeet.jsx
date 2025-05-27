@@ -35,9 +35,9 @@ export default function VideoMeetComponent() {
 
     let [audioAvailable, setAudioAvailable] = useState(true);
 
-    let [video, setVideo] = useState([]);
+    let [video, setVideo] = useState(false);
 
-    let [audio, setAudio] = useState();
+    let [audio, setAudio] = useState(false);
 
     let [screen, setScreen] = useState();
 
@@ -101,7 +101,7 @@ export default function VideoMeetComponent() {
             }
 
             if (videoAvailable || audioAvailable) {
-                const userMediaStream = await navigator.mediaDevices.getUserMedia({ video: videoAvailable, audio: audioAvailable });
+                const userMediaStream = await navigator.mediaDevices.getUserMedia({ video: videoAvailable && video, audio: audioAvailable && audio });
                 if (userMediaStream) {
                     window.localStream = userMediaStream;
                     if (localVideoref.current) {
@@ -123,61 +123,59 @@ export default function VideoMeetComponent() {
     }, [video, audio])
 
     let getMedia = () => {
-        setVideo(videoAvailable);
-        setAudio(audioAvailable);
+        console.log("[RTC] getMedia called, connecting to socket...");
         connectToSocketServer();
     }
 
 
-        let getUserMediaSuccess = (stream) => {
+let getUserMediaSuccess = (stream) => {
+    // Stop previous tracks if any
+    if (window.localStream) {
         try {
-            window.localStream.getTracks().forEach(track => track.stop())
+            window.localStream.getTracks().forEach(track => track.stop());
         } catch (e) { console.log(e) }
-
-        window.localStream = stream
-        localVideoref.current.srcObject = stream
-
-        for (let id in connections) {
-            if (id === socketIdRef.current) continue
-
-            connections[id].addStream(window.localStream)
-
-            connections[id].createOffer().then((description) => {
-                console.log(description)
-                connections[id].setLocalDescription(description)
-                    .then(() => {
-                        socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
-                    })
-                    .catch(e => console.log(e))
-            })
-        }
-
-        stream.getTracks().forEach(track => track.onended = () => {
-            setVideo(false);
-            setAudio(false);
-
-            try {
-                let tracks = localVideoref.current.srcObject.getTracks()
-                tracks.forEach(track => track.stop())
-            } catch (e) { console.log(e) }
-
-            let blackSilence = (...args) => new MediaStream([black(...args), silence()])
-            window.localStream = blackSilence()
-            localVideoref.current.srcObject = window.localStream
-
-            for (let id in connections) {
-                connections[id].addStream(window.localStream)
-
-                connections[id].createOffer().then((description) => {
-                    connections[id].setLocalDescription(description)
-                        .then(() => {
-                            socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
-                        })
-                        .catch(e => console.log(e))
-                })
-            }
-        })
     }
+
+    window.localStream = stream;
+    if (localVideoref.current) {
+        localVideoref.current.srcObject = stream;
+    }
+
+    for (let id in connections) {
+        if (id === socketIdRef.current) continue;
+
+        // Remove all senders before adding new tracks
+        connections[id].getSenders().forEach(sender => {
+            connections[id].removeTrack(sender);
+        });
+
+        // Add all tracks from the new stream
+        stream.getTracks().forEach(track => {
+            connections[id].addTrack(track, stream);
+        });
+
+        connections[id].createOffer().then((description) => {
+            connections[id].setLocalDescription(description)
+                .then(() => {
+                    socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }));
+                })
+                .catch(e => console.log(e));
+        });
+    }
+
+    stream.getTracks().forEach(track => track.onended = () => {
+        setVideo(false);
+        setAudio(false);
+        if (localVideoref.current && localVideoref.current.srcObject) {
+            try {
+                let tracks = localVideoref.current.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            } catch (e) { console.log(e); }
+        }
+    });
+}
+
+
 
     let getUserMedia = () => {
         if ((video && videoAvailable) || (audio && audioAvailable)) {
@@ -195,138 +193,181 @@ export default function VideoMeetComponent() {
     };
 
 
-    let gotMessageFromServer = (fromId, message) => {
-        var signal = JSON.parse(message)
+  let gotMessageFromServer = (fromId, message) => {
+    console.log(`[RTC][${fromId}] gotMessageFromServer called. Message:`, message);
+    var signal = JSON.parse(message);
 
-        if (fromId !== socketIdRef.current) {
-            if (signal.sdp) {
-                connections[fromId].setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(() => {
-                    if (signal.sdp.type === 'offer') {
-                        connections[fromId].createAnswer().then((description) => {
-                            connections[fromId].setLocalDescription(description).then(() => {
-                                socketRef.current.emit('signal', fromId, JSON.stringify({ 'sdp': connections[fromId].localDescription }))
-                            }).catch(e => console.log(e))
-                        }).catch(e => console.log(e))
-                    }
-                }).catch(e => console.log(e))
-            }
-
-            if (signal.ice) {
-                connections[fromId].addIceCandidate(new RTCIceCandidate(signal.ice)).catch(e => console.log(e))
-            }
-        }
+    if (fromId === socketIdRef.current) {
+        console.log(`[RTC][${fromId}] Ignoring own signal`);
+        return; // Ignore own signals
     }
 
-    const addMessage = (data, sender, socketIdSender) => {
-        console.log("ADD MESSAGE", data, sender, socketIdSender);
-        setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: sender, data: data, socketIdSender: socketIdSender }
-        ]);
-        if (socketIdSender !== socketIdRef.current) {
-            setNewMessages((prevNewMessages) => prevNewMessages + 1);
+    // 1. Connection creation
+    if (!connections[fromId]) {
+        connections[fromId] = new RTCPeerConnection(peerConfigConnections);
+        console.log(`[RTC][${fromId}] Created new RTCPeerConnection`);
+
+        // 2. Add local tracks
+        if (window.localStream) {
+            window.localStream.getTracks().forEach(track => {
+                connections[fromId].addTrack(track, window.localStream);
+                console.log(`[RTC][${fromId}] Added local track (${track.kind})`);
+            });
+        } else {
+            console.warn(`[RTC][${fromId}] No local stream when adding tracks`);
         }
-    };
+
+        // 3. ontrack handler
+        connections[fromId].ontrack = (event) => {
+            console.log(`[RTC][${fromId}] ontrack fired`, event.streams[0]);
+            setVideos(prevVideos => {
+                if (prevVideos.some(v => v.socketId === fromId)) return prevVideos;
+                return [...prevVideos, {
+                    socketId: fromId,
+                    stream: event.streams[0],
+                    autoplay: true,
+                    playsinline: true
+                }];
+            });
+        };
+
+        // 4. ICE candidate handler
+        connections[fromId].onicecandidate = (event) => {
+            if (event.candidate) {
+                console.log(`[RTC][${fromId}] Sending ICE candidate`, event.candidate);
+                socketRef.current.emit('signal', fromId, JSON.stringify({ ice: event.candidate }));
+            }
+        };
+    }
+
+    // 5. Handle SDP (offer/answer)
+    if (signal.sdp) {
+        console.log(`[RTC][${fromId}] Received SDP (${signal.sdp.type})`);
+        connections[fromId].setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(() => {
+            console.log(`[RTC][${fromId}] Set remote description`);
+            if (signal.sdp.type === 'offer') {
+                connections[fromId].createAnswer().then((description) => {
+                    console.log(`[RTC][${fromId}] Created answer`);
+                    connections[fromId].setLocalDescription(description).then(() => {
+                        console.log(`[RTC][${fromId}] Set local description (answer), sending to remote`);
+                        socketRef.current.emit('signal', fromId, JSON.stringify({ 'sdp': connections[fromId].localDescription }));
+                    }).catch(e => console.log(`[RTC][${fromId}] Error setting local description (answer):`, e));
+                }).catch(e => console.log(`[RTC][${fromId}] Error creating answer:`, e));
+            }
+        }).catch(e => console.log(`[RTC][${fromId}] Error setting remote description:`, e));
+    }
+
+    // 6. Handle ICE candidate
+    if (signal.ice) {
+        console.log(`[RTC][${fromId}] Received ICE candidate`, signal.ice);
+        connections[fromId].addIceCandidate(new RTCIceCandidate(signal.ice))
+            .then(() => console.log(`[RTC][${fromId}] Added ICE candidate`))
+            .catch(e => console.log(`[RTC][${fromId}] Error adding ICE candidate:`, e));
+    }
+};
+
+
+
+ const addMessage = (data, sender, socketIdSender) => {
+    setMessages(prev => [
+        ...prev,
+        { sender, data, socketIdSender }
+    ]);
+};
+
 
     let connectToSocketServer = () => {
-        socketRef.current = io.connect(server_url, { secure: false })
+    console.log("[RTC] Attempting to connect to socket server...");
+    socketRef.current = io.connect(server_url, { secure: true });
 
-        socketRef.current.on('signal', gotMessageFromServer)
+    console.log("[RTC] Registered 'signal' event handler");
+    socketRef.current.on('signal', gotMessageFromServer);
 
-        socketRef.current.on('connect', () => {
-            socketRef.current.emit('join-call', { room: window.location.href, username });
-            socketIdRef.current = socketRef.current.id
-            setMessages([]);
-            socketRef.current.off('chat-message')
-            socketRef.current.on('chat-message', (msg) => {
-                console.log("CHAT MESSAGE RECEIVED", msg);
-                if (msg && msg.room && msg.room.room === window.location.href) {
-                    addMessage(msg.data, msg.sender, msg["socket-id-sender"]);
+    socketRef.current.on('connect', () => {
+        console.log("[RTC] Socket connected, id:", socketRef.current.id);
+        socketRef.current.emit('join-call', { room: window.location.href, username });
+        socketIdRef.current = socketRef.current.id;
+        setMessages([]);
+    });
+
+    socketRef.current.on('user-joined', (id, clients) => {
+        clients.forEach((socketListId) => {
+            if (connections[socketListId]) return; // Prevent duplicate connections
+
+            connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
+
+            // ICE candidate
+            connections[socketListId].onicecandidate = function (event) {
+                if (event.candidate != null) {
+                    socketRef.current.emit('signal', socketListId, JSON.stringify({ 'ice': event.candidate }));
                 }
-            });
+            };
 
-            socketRef.current.on('user-left', (id) => {
-                setVideos((videos) => videos.filter((video) => video.socketId !== id))
-            })
+            // Modern WebRTC: Use ontrack
+            connections[socketListId].ontrack = (event) => {
+                setVideos(prevVideos => {
+                    if (prevVideos.some(v => v.socketId === socketListId)) return prevVideos;
+                    return [...prevVideos, {
+                        socketId: socketListId,
+                        stream: event.streams[0],
+                        autoplay: true,
+                        playsinline: true
+                    }];
+                });
+            };
 
-            socketRef.current.on('user-joined', (id, clients) => {
-                clients.forEach((socketListId) => {
+            // Add local tracks
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => {
+                    connections[socketListId].addTrack(track, window.localStream);
+                });
+            }
+        });
 
-                    connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
-                    // Wait for their ice candidate       
-                    connections[socketListId].onicecandidate = function (event) {
-                        if (event.candidate != null) {
-                            socketRef.current.emit('signal', socketListId, JSON.stringify({ 'ice': event.candidate }))
-                        }
-                    }
-
-                    // Wait for their video stream
-                    connections[socketListId].onaddstream = (event) => {
-                        console.log("BEFORE:", videoRef.current);
-                        console.log("FINDING ID: ", socketListId);
-
-                        let videoExists = videoRef.current.find(video => video.socketId === socketListId);
-
-                        if (videoExists) {
-                            console.log("FOUND EXISTING");
-
-                            // Update the stream of the existing video
-                            setVideos(videos => {
-                                const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream: event.stream } : video
-                                );
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
-                        } else {
-                            // Create a new video
-                            console.log("CREATING NEW");
-                            let newVideo = {
-                                socketId: socketListId,
-                                stream: event.stream,
-                                autoplay: true,
-                                playsinline: true
-                            };
-
-                            setVideos(videos => {
-                                const updatedVideos = [...videos, newVideo];
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
-                        }
-                    };
-
-
-                    // Add the local video stream
-                    if (window.localStream !== undefined && window.localStream !== null) {
-                        connections[socketListId].addStream(window.localStream)
-                    } else {
-                        let blackSilence = (...args) => new MediaStream([black(...args), silence()])
-                        window.localStream = blackSilence()
-                        connections[socketListId].addStream(window.localStream)
-                    }
-                })
-
-                if (id === socketIdRef.current) {
-                    for (let id2 in connections) {
-                        if (id2 === socketIdRef.current) continue
-
-                        try {
-                            connections[id2].addStream(window.localStream)
-                        } catch (e) {console.log(e) }
-
-                        connections[id2].createOffer().then((description) => {
-                            connections[id2].setLocalDescription(description)
-                                .then(() => {
-                                    socketRef.current.emit('signal', id2, JSON.stringify({ 'sdp': connections[id2].localDescription }))
-                                })
-                                .catch(e => console.log(e))
+        // Only the new user creates offers
+        if (id === socketIdRef.current) {
+            for (let id2 in connections) {
+                if (id2 === socketIdRef.current) continue;
+                connections[id2].createOffer().then((description) => {
+                    connections[id2].setLocalDescription(description)
+                        .then(() => {
+                            socketRef.current.emit('signal', id2, JSON.stringify({ 'sdp': connections[id2].localDescription }));
                         })
-                    }
-                }
-            })
-        })
-    }
+                        .catch(e => console.log(e));
+                });
+            }
+        }
+    });
+};
+
+    useEffect(() => {
+    if (!socketRef.current) return;
+
+    // Remove previous handlers to prevent duplicates
+    socketRef.current.off('chat-message');
+    socketRef.current.off('user-left');
+
+    // Chat message handler
+    socketRef.current.on('chat-message', (msg) => {
+        console.log("CHAT MESSAGE RECEIVED", msg);
+        if (msg && msg.room === window.location.href) {
+            addMessage(msg.data, msg.sender, msg["socket-id-sender"]);
+        }
+    });
+
+    // User left handler
+    socketRef.current.on('user-left', (id) => {
+        setVideos((videos) => videos.filter((video) => video.socketId !== id));
+    });
+
+    // Cleanup on unmount
+    return () => {
+        if (socketRef.current) {
+            socketRef.current.off('chat-message');
+            socketRef.current.off('user-left');
+        }
+    };
+}, [addMessage]);
 
     let silence = () => {
         let ctx = new AudioContext()
@@ -347,74 +388,111 @@ export default function VideoMeetComponent() {
 
     
     let connect = () => {
-        setAskForUsername(false);
-        getMedia();
-    }
+    setAskForUsername(false);
+    console.log("[RTC] connect clicked, calling getMedia...");
+    getMedia();
+}
+
+
 
     let handleVideo = () =>{
         setVideo(!video);
+        getUserMedia();
     }
 
     let handleAudio = () =>{
         setAudio(!audio);
+        getUserMedia();
     }
 
-     let getDislayMediaSuccess = (stream) => {
-        console.log("HERE")
-        try {
-            window.localStream.getTracks().forEach(track => track.stop())
-        } catch (e) { console.log(e) }
+let getDislayMediaSuccess = (stream) => {
+    console.log("[ScreenShare] Stream received");
 
-        window.localStream = stream
-        localVideoref.current.srcObject = stream
-
-        for (let id in connections) {
-            if (id === socketIdRef.current) continue
-
-            connections[id].addStream(window.localStream)
-
-            connections[id].createOffer().then((description) => {
-                connections[id].setLocalDescription(description)
-                    .then(() => {
-                        socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
-                    })
-                    .catch(e => console.log(e))
-            })
+    try {
+        if (window.localStream) {
+            window.localStream.getTracks().forEach(track => {
+                console.log("[ScreenShare] Stopping old track:", track.kind);
+                track.stop();
+            });
         }
+    } catch (e) {
+        console.error("[ScreenShare] Error stopping old tracks:", e);
+    }
 
-        stream.getTracks().forEach(track => track.onended = () => {
-            setScreen(false)
+    window.localStream = stream;
+    localVideoref.current.srcObject = stream;
+    console.log("[ScreenShare] localVideoref.srcObject set");
+
+    for (let id in connections) {
+        if (id === socketIdRef.current) {
+            continue;
+        }
+        console.log(`[ScreenShare] Updating connection for peer: ${id}`);
+
+        // Remove old tracks of type video or audio from the connection
+        const senders = connections[id].getSenders();
+        senders.forEach(sender => {
+            if (sender.track && (sender.track.kind === 'video' || sender.track.kind === 'audio')) {
+                console.log(`[ScreenShare] Removing old track (${sender.track.kind}) from connection ${id}`);
+                connections[id].removeTrack(sender);
+            }
+        });
+
+        // Add all tracks from new stream
+        window.localStream.getTracks().forEach(track => {
+            console.log(`[ScreenShare] Adding track (${track.kind}) to connection ${id}`);
+            connections[id].addTrack(track, window.localStream);
+        });
+
+        connections[id].createOffer()
+            .then(description => {
+                console.log(`[ScreenShare] Created offer for ${id}`);
+                return connections[id].setLocalDescription(description);
+            })
+            .then(() => {
+                console.log(`[ScreenShare] Set local description and emitting signal to ${id}`);
+                socketRef.current.emit('signal', id, JSON.stringify({ sdp: connections[id].localDescription }));
+            })
+            .catch(e => console.error("[ScreenShare] Error during offer creation or signaling:", e));
+    }
+
+    stream.getTracks().forEach(track => {
+        track.onended = () => {
+            console.log("[ScreenShare] Screen sharing stopped by user");
+
+            setScreen(false);
 
             try {
-                let tracks = localVideoref.current.srcObject.getTracks()
-                tracks.forEach(track => track.stop())
-            } catch (e) { console.log(e) }
-
-            let blackSilence = (...args) => new MediaStream([black(...args), silence()])
-            window.localStream = blackSilence()
-            localVideoref.current.srcObject = window.localStream
-
-            getUserMedia()
-
-        })
-    }
-
-    let getDisplayMedia = () => {
-        if(screen) {
-            if(navigator.mediaDevices.getDisplayMedia) {
-                navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-                    .then(getDislayMediaSuccess)
-                    .then((stream) => { })
-                    .catch((e) => console.log(e))
+                let tracks = localVideoref.current.srcObject.getTracks();
+                tracks.forEach(track => {
+                    console.log("[ScreenShare] Stopping track after screen share ended:", track.kind);
+                    track.stop();
+                });
+            } catch (e) {
+                console.error("[ScreenShare] Error stopping tracks after screen share ended:", e);
             }
+
+            // Fallback to camera
+            getUserMedia();
+        };
+    });
+};
+
+let getDisplayMedia = () => {
+    if(screen) {
+        if(navigator.mediaDevices.getDisplayMedia) {
+            navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                .then(getDislayMediaSuccess)
+                .catch((e) => console.log(e));
         }
     }
-    
-     useEffect(() => {
-        if (screen !== undefined) {
-            getDisplayMedia();
-        }
-    }, [screen])
+};
+
+useEffect(() => {
+    if (screen !== undefined) {
+        getDisplayMedia();
+    }
+}, [screen]);
 
     let handleScreen = () => {
         setScreen(!screen);
@@ -428,39 +506,53 @@ export default function VideoMeetComponent() {
         // this.setState({ message: "", sender: username })
     }
 
-    let handleEndCall = () => {
-        try {
-            setMessages([]);
-            setVideos([]);
-            videoRef.current = [];
+   let handleEndCall = () => {
+    try {
+        // 1. Clear all messages and video state
+        setMessages([]);
+        setVideos([]);
+        if (videoRef.current) videoRef.current = [];
+
+        // 2. Close all peer connections
+        if (connections) {
+            Object.values(connections).forEach(conn => {
+                try { conn.close(); } catch (e) { console.log("Error closing connection", e); }
+            });
             connections = {};
-
-            if (socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current = null;
-            }
-
-            setVideoAvailable(false);
-            setAudioAvailable(false);
-            setVideo(false);
-            setAudio(false);
-            setScreen(false);
-            setScreenAvailable(false);
-            setAskForUsername(true);
-            setUsername("");
-            setModal(false);
-            setNewMessages(0);
-
-            if (window.localStream) {
-                window.localStream.getTracks().forEach(track => track.stop());
-                window.localStream = null; // Optional: clear it
-            }
-        } catch (e) {
-            console.log("Error in stopping the stream", e);
         }
 
-        routeTo("/home");
+        // 3. Stop all local media tracks
+        if (window.localStream) {
+            window.localStream.getTracks().forEach(track => track.stop());
+            window.localStream = null;
+        }
+
+        // 4. Remove all socket listeners and disconnect
+        if (socketRef.current) {
+            socketRef.current.off();
+            socketRef.current.disconnect();
+            socketRef.current = null;
+        }
+
+        // 5. Reset UI and user state
+        setVideoAvailable(false);
+        setAudioAvailable(false);
+        setVideo(false);
+        setAudio(false);
+        setScreen(false);
+        setScreenAvailable(false);
+        setAskForUsername(true);
+        setUsername("");
+        setModal(false);
+        setNewMessages(0);
+
+    } catch (e) {
+        console.log("Error in stopping the stream", e);
     }
+
+    // 6. Route away from the call
+    routeTo("/home");
+}
 
     
     return (
@@ -490,7 +582,7 @@ export default function VideoMeetComponent() {
                                 <h1 style={{textAlign: "center"}}>Chat Box</h1>
 
                                  <div className={styles.chattingDisplay}>
-
+                                {console.log("MESSAGES", messages)}
                                 {messages.length !== 0 ? messages.map((msg, index) => {
 
                                     console.log(messages)
@@ -574,19 +666,18 @@ export default function VideoMeetComponent() {
                     <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted playsInline></video>
                     
                     <div className={styles.conferenceView}>
+                        {console.log("VIDEOS", videos)}
                         {videos.map((video) => (
-                            <div  key={video.socketId}>
-                                <video
-                                    data-socket={video.socketId}
-                                    ref={(ref) => {
-                                        if (ref && video.stream) {
-                                            ref.srcObject = video.stream;
-                                        }
-                                    }}
-                                    autoPlay
-                                >
-                                </video>
-                            </div>
+                            <video
+                                key={video.socketId}
+                                style={{ border: '1px solid black', width: "300px", margin: "10px" }}
+                                ref={el => {
+                                    if (el) el.srcObject = video.stream;
+                                }}
+                                autoPlay
+                                playsInline
+                                id={`remoteVideo-${video.socketId}`}
+                            />
                         ))}
                     </div>
                 </div>

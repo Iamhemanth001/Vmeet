@@ -18,14 +18,14 @@ export const connectToSocket = (server) => {
         console.log(`✅ New connection: ${socket.id}`);
 
         // JOIN CALL / ROOM
-        socket.on("join-call", (roomId) => {
+        socket.on("join-call", ({ room, username }) => {
+            const roomId = room;
             socket.join(roomId);
             timeOnline[socket.id] = new Date();
 
-            const room = io.sockets.adapter.rooms.get(roomId);
-            const participants = room ? [...room] : [];
+            const roomObj = io.sockets.adapter.rooms.get(roomId);
+            const participants = roomObj ? [...roomObj] : [];
 
-            // Send info to everyone in the room
             io.to(roomId).emit("user-joined", socket.id, participants);
 
             // Send chat history to the new user
@@ -34,9 +34,10 @@ export const connectToSocket = (server) => {
                     socket.emit("chat-message", msg.data, msg.sender, msg["socket-id-sender"]);
                 });
             } else {
-                messages[roomId] = []; // Initialize empty message list for room
+                messages[roomId] = [];
             }
         });
+
 
         // CHAT MESSAGE HANDLING
         socket.on("chat-message", (data, sender) => {
