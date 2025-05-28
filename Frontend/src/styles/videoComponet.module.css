@@ -1,3 +1,8 @@
+body{
+    margin: 0;
+    padding: 0;
+}
+
 .meetVideoContainer {
     position: relative;
     height: 100vh;
@@ -21,6 +26,23 @@
     100% {
         background-position: 0% 50%;
     }
+}
+
+.blackPlaceholder {
+  width: 45vw;
+  height: 40vh;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+}
+
+.userName{
+    font-size: 1.5rem;
+    text-align: right;
+    color: rgb(223, 222, 222);
+    font-family: ui-monospace;
 }
 
 .conferenceView {
@@ -49,9 +71,9 @@
 .meetUserVideo {
     position: fixed;
     bottom: 80px;
-    left: 10px;
-    height: 30vh;
-    aspect-ratio: 12/9; 
+    left: 0px;
+    height: 25vh;
+    aspect-ratio: 10 / 7.5;
     border-radius: 20px;
     z-index: 10;
     background-color: black;
@@ -69,7 +91,7 @@
     bottom: 0;
     text-align: center;
     background-color: rgba(0, 0, 0, 0.3); 
-    padding: 10px 0;
+    padding: 0px 0;
     z-index: 10;
 }
 
