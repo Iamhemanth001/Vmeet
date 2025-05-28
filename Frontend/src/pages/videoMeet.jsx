@@ -236,6 +236,10 @@ export default function VideoMeetComponent() {
         ...prev,
         { sender, data, socketIdSender }
     ]);
+
+    if (socketIdSender !== socketIdRef.current) {
+            setNewMessages((prevNewMessages) => prevNewMessages + 1);
+    }
 };
 
     let connectToSocketServer = () => {
@@ -260,40 +264,37 @@ export default function VideoMeetComponent() {
             })
 
             socketRef.current.on('user-joined', (id, clients) => {
-                clients.forEach((socketListId) => {
+                console.log("clients", clients);
+                clients.forEach((client) => {
+                    const socketListId = client.socketId;
+                    const username = client.username;
 
-                    connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
-                    // Wait for their ice candidate       
+                    connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
+
                     connections[socketListId].onicecandidate = function (event) {
                         if (event.candidate != null) {
                             socketRef.current.emit('signal', socketListId, JSON.stringify({ 'ice': event.candidate }))
                         }
                     }
 
-                    // Wait for their video stream
                     connections[socketListId].onaddstream = (event) => {
-                        console.log("BEFORE:", videoRef.current);
-                        console.log("FINDING ID: ", socketListId);
-
                         let videoExists = videoRef.current.find(video => video.socketId === socketListId);
 
                         if (videoExists) {
-                            console.log("FOUND EXISTING");
-
-                            // Update the stream of the existing video
                             setVideos(videos => {
                                 const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream: event.stream } : video
+                                    video.socketId === socketListId
+                                        ? { ...video, stream: event.stream, username }
+                                        : video
                                 );
                                 videoRef.current = updatedVideos;
                                 return updatedVideos;
                             });
                         } else {
-                            // Create a new video
-                            console.log("CREATING NEW");
                             let newVideo = {
                                 socketId: socketListId,
                                 stream: event.stream,
+                                username, // <-- add username here!
                                 autoplay: true,
                                 playsinline: true
                             };
@@ -306,7 +307,6 @@ export default function VideoMeetComponent() {
                         }
                     };
 
-
                     // Add the local video stream
                     if (window.localStream !== undefined && window.localStream !== null) {
                         connections[socketListId].addStream(window.localStream)
@@ -315,7 +315,7 @@ export default function VideoMeetComponent() {
                         window.localStream = blackSilence()
                         connections[socketListId].addStream(window.localStream)
                     }
-                })
+                });
 
                 if (id === socketIdRef.current) {
                     for (let id2 in connections) {
@@ -323,7 +323,7 @@ export default function VideoMeetComponent() {
 
                         try {
                             connections[id2].addStream(window.localStream)
-                        } catch (e) {console.log(e) }
+                        } catch (e) { console.log(e) }
 
                         connections[id2].createOffer().then((description) => {
                             connections[id2].setLocalDescription(description)
@@ -334,7 +334,7 @@ export default function VideoMeetComponent() {
                         })
                     }
                 }
-            })
+            });
         })
     }
 
@@ -661,7 +661,7 @@ useEffect(() => {
                                         <VideocamOffIcon style={{ fontSize: 48, color: "#fff" }} />
                                         </div>
                                     )}
-                                <h3 className={styles.userName}>~ {username || "Unknown"}</h3>
+                                <h3 className={styles.userName}>~ {video.username || "Unknown"}</h3>
                                 </div>
                             );
                             })}

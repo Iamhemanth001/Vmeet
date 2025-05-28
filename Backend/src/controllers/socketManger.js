@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 // Store messages by roomId
 let messages = {};
 let timeOnline = {};
+let usernames = {};
 
 export const connectToSocket = (server) => {
     const io = new Server(server, {
@@ -22,11 +23,17 @@ export const connectToSocket = (server) => {
             const roomId = room;
             socket.join(roomId);
             timeOnline[socket.id] = new Date();
+            usernames[socket.id] = username; // Store username
 
             const roomObj = io.sockets.adapter.rooms.get(roomId);
             const participants = roomObj ? [...roomObj] : [];
+            
+            const participantsWithNames = participants.map(id => ({
+                socketId: id,
+                username: usernames[id] || "Unknown"
+            }));
 
-            io.to(roomId).emit("user-joined", socket.id, participants);
+            io.to(roomId).emit("user-joined", socket.id, participantsWithNames);
 
             // Send chat history to the new user
             if (messages[roomId]) {
