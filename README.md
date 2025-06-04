@@ -1,8 +1,8 @@
-🎥 VideoMeet
+🎥 VMeet
 
 Where Faces Meet, No Matter the Place!
 
-VideoMeet is a real-time video chat application that uses WebRTC for peer-to-peer media connections, 
+VMeet is a real-time video chat application that uses WebRTC for peer-to-peer media connections, 
 Socket.io for signaling, and Web APIs like navigator.mediaDevices.getUserMedia to access camera and microphone.
 
 -------------------------------------
